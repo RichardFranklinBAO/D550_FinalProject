@@ -46,7 +46,7 @@ The last two pieces of code chunks generate the tables and figures.
 And where the code for creating your required table is is very clear on the `R_Project.Rmd` file.
 And where the code for creating your required figure is is very clear on the `R_Project.Rmd` file.
 
-*(Alternatively, if you have `make` installed, running `make R_Project.html` in the root directory generates the R_Project.html.)*
+*(Alternatively, if you have `make` installed, running `make report` in the root directory generates the R_Project.html.)*
 
 ---
 

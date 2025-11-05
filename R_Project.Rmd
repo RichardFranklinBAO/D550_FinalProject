@@ -1,0 +1,154 @@
+---
+title: "Cross-Sectional Momentum on S&P 500 (Kaggle)"
+author: Conglin BAO
+date: "`r format(Sys.Date(), '%b %e, %Y')`"
+output: html_document
+---
+
+```{r setup, message=FALSE, warning=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(dplyr); 
+library(tidyr); 
+library(purrr)
+library(ggplot2); 
+library(PerformanceAnalytics); 
+library(slider); 
+library(readr); 
+library(xts);
+here::i_am("R_Project.Rmd")
+```
+
+## Introduction
+We analyze the Kaggle dataset “S&P 500 stock data” (camnugent/sandp500), which ~5 years of daily open, high, low, and close prices and trading volume (OHLCV) in `all_stocks_5yr.csv`.
+Our objectives are to: <br>
+1: programmatically obtain the data, <br>
+2: clean and aggregate it to monthly log returns, <br>
+3: construct a 12–1 cross-sectional momentum signal, <br>
+4: form decile portfolios and report the long–short (Q10–Q1) performance—annualized return, volatility, Sharpe,<br>
+5: visualize gross vs. cost-adjusted cumulative returns. <br>
+A brief table summarizes sample coverage.
+
+
+```{r get_data}
+# 1:
+prices <- read.csv(here::here('data', 'raw', 'all_stocks_5yr.csv'), stringsAsFactors = FALSE)
+prices$date <- as.Date(prices$date)
+```
+
+
+```{r monthly_returns}
+# 2: From daily prices to monthly log returns
+prices <- prices |>
+  mutate(date = as.Date(date))
+
+# last close per month -> log returns
+rets <- prices |>
+  mutate(month = as.Date(cut(date, "month"))) |>
+  group_by(Name, month) |>
+  summarise(close = dplyr::last(close), .groups = "drop") |>
+  arrange(Name, month) |>
+  group_by(Name) |>
+  mutate(ret = log(close / lag(close))) |>
+  ungroup() |>
+  filter(!is.na(ret))
+
+# store a cleaned copy (optional)
+dir.create("data/clean", recursive = TRUE, showWarnings = FALSE)
+write_csv(rets, here::here('data', 'clean', 'monthly_returns.csv'))
+```
+
+
+```{r momentum}
+# 3: 12–1 cross-sectional momentum and portfolios
+# 12–1 momentum = sum of monthly log returns over [t-12, t-2], skipping t-1
+mom_tbl <- rets |>
+  arrange(Name, month) |>
+  group_by(Name) |>
+  mutate(
+    ret1m   = ret,
+    roll12  = slide_dbl(ret1m, ~ sum(.x), .before = 11, .complete = TRUE),
+    mom_12_1 = dplyr::lag(roll12, 1)
+  ) |>
+  ungroup() |>
+  tidyr::drop_na(mom_12_1)
+
+# each month: deciles by momentum; long Q10, short Q1
+port_tbl <- mom_tbl |>
+  group_by(month) |>
+  mutate(ntile = ntile(mom_12_1, 10)) |>
+  summarise(
+    long  = mean(ret1m[ntile == 10], na.rm = TRUE),
+    short = mean(ret1m[ntile == 1 ], na.rm = TRUE),
+    ls    = long - short,
+    .groups = "drop"
+  )
+
+# simple transaction-cost adjustment
+cost_rate <- 0.0003  # 3 bps per side
+turnover  <- 0.5     # monthly turnover assumption
+port_tbl  <- port_tbl |>
+  mutate(ls_net = ls - 2 * cost_rate * turnover)
+```
+
+### Table
+```{r table1, message=FALSE}
+# 4: Results — table
+# sample coverage + performance metrics
+R_ls <- xts::xts(port_tbl$ls, order.by = port_tbl$month)
+
+library(scales)
+
+# 原始汇总（保持不变）
+tab1 <- tibble::tibble(
+  start      = min(port_tbl$month),
+  end        = max(port_tbl$month),
+  n_stocks   = dplyr::n_distinct(rets$Name),
+  n_obs      = nrow(rets),
+  mean_LS    = mean(port_tbl$ls, na.rm = TRUE),
+  ann_ret    = as.numeric(PerformanceAnalytics::Return.annualized(R_ls, scale = 12)),
+  ann_vol    = as.numeric(PerformanceAnalytics::StdDev.annualized(R_ls, scale = 12)),
+  sharpe     = as.numeric(PerformanceAnalytics::SharpeRatio.annualized(R_ls, scale = 12))
+)
+
+# 格式化 + 完整列名
+tab1_fmt <- tab1 |>
+  dplyr::transmute(
+    `Sample start`                   = format(start, "%Y-%m"),
+    `Sample end`                     = format(end, "%Y-%m"),
+    `Unique tickers`                 = comma(n_stocks),
+    `Stock–month observations`       = comma(n_obs),
+    `Avg monthly long–short (log)`   = percent(mean_LS, accuracy = 0.01),
+    `Annualized return`              = percent(ann_ret, accuracy = 0.01),
+    `Annualized volatility`          = percent(ann_vol, accuracy = 0.01),
+    `Sharpe ratio`                   = round(sharpe, 2)
+  )
+
+knitr::kable(
+  tab1_fmt,
+  caption = "Sample coverage and momentum long–short performance (gross).",
+  align   = c("l","l","r","r","r","r","r","r")
+)
+```
+
+## Table description: <br>
+The table summarizes the sample used in the 12–1 cross-sectional momentum test. We work from March 2014 to February 2018, covering 505 unique S&P-500 tickers and 29,507 stock–months after aggregating daily prices to monthly log returns (last trading day of each month). The equal-weight long–short portfolio (long top decile by momentum, short bottom decile) delivers an average monthly log return of 0.45%, which annualizes to 4.05% with 17.38% annualized volatility, yielding a Sharpe ratio of 0.23. These are gross results (no transaction costs) and reflect a short sample and a simple specification—no industry/size neutrality or turnover control—so they should be viewed as a reproducible baseline rather than an optimized strategy.
+
+### Figure
+```{r figure, fig.width=7, fig.height=4.2}
+# 5: Results — figure
+cum_df <- port_tbl |>
+  mutate(cum = exp(cumsum(ls)),
+         cum_net = exp(cumsum(ls_net))) |>
+  select(month, cum, cum_net) |>
+  pivot_longer(-month, names_to = "series", values_to = "value")
+
+ggplot(cum_df, aes(month, value, linetype = series)) +
+  geom_line(linewidth = 0.8) +
+  scale_linetype_manual(values = c("solid","dashed"), labels = c("Gross","Net of costs")) +
+  labs(title = "Cross-Sectional Momentum (12–1): Cumulative Return",
+       x = "Year", y = "Growth of $1", linetype = NULL) +
+  theme_minimal(base_size = 12)
+```
+
+## Figure description: <br>
+The figure plots the cumulative wealth of the monthly long–short momentum portfolio starting at $1. The gross curve (solid) and the net-of-costs curve (dashed; 3 bps per side, 50% monthly turnover) track each other closely—costs impose only a small drag under these assumptions. Performance dips in early 2014, rallies through 2015, reaches a local peak around early 2016, then experiences a drawdown into early 2017, followed by a partial recovery; by the end of the sample the portfolio stands near $1.24 gross with a slightly lower net value. This pattern is consistent with momentum cycles over the period and highlights that costs matter but are not dominant with the simple settings used here.

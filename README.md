@@ -70,3 +70,6 @@ All the analysis code is contained within the **`R_Project.Rmd`** file, structur
 | **Momentum & Portfolios** | `momentum` | Calculates the 12-1 momentum signal, forms decile portfolios, and computes gross and net long-short returns. |
 | **Performance Table** | **`table1`** | **Contains the R code to generate the final performance and sample coverage table.** |
 | **Cumulative Return Figure** | **`figure`** | **Contains the R code to generate the cumulative return plot (gross vs. net).** |
+
+
+To synchronize the package repository and install necessary packages, please run the following command in the terminal: make install

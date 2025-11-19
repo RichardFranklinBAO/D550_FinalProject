@@ -1,3 +1,6 @@
+install:
+	Rscript -e "renv::restore(prompt = FALSE)"
+
 R_Project.html: R_Project.Rmd code/01_render_report.R
 	Rscript code/01_render_report.R
 

@@ -31,7 +31,7 @@ Output: report/R_Project.html
 
 This target runs docker run and bind-mounts the local report/ directory into the container, so the compiled report is written back to your machine—exactly what the rubric requires for the Makefile + report generation points.
 
-## (Optional) Raw docker command
+#### (Optional) Raw docker command
 If you prefer not to use make, you can run:
 ```
 docker run --rm \

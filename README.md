@@ -25,12 +25,22 @@ Prebuilt Docker image on DockerHub: **https://hub.docker.com/r/richardfbao/d550-
 
 From the repo root, with Docker Desktop running:
 
-`make docker-report`
+`make report`
 
 Output: report/R_Project.html
 
 This target runs docker run and bind-mounts the local report/ directory into the container, so the compiled report is written back to your machine—exactly what the rubric requires for the Makefile + report generation points.
 
+## (Optional) Raw docker command
+If you prefer not to use make, you can run:
+```
+docker run --rm \
+  -v "$PWD":/work \
+  -v "$PWD/report":/out \
+  -w /work \
+  -e OUTDIR=/out \
+  richardfbao/d550-final-report:latest
+```
 
 ## (Optional) Build the image locally
 
@@ -72,5 +82,3 @@ test -f report/R_Project.html && echo "✅ report OK" || echo "❌ report missin
 ```
 ## License
 For course use and demonstration only.
-
-ardfbao/d550-final-report:latest

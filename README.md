@@ -39,11 +39,10 @@ You can skip this step and use the prebuilt image from DockerHub.
 If you want to build locally:
 
 `make docker-build`
+
 equivalent:
 docker build --platform=linux/amd64 -t richardfbao/d550-final-report:latest .
 
-
-⸻
 
 ## Makefile targets
 

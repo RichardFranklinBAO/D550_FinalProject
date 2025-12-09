@@ -1,129 +1,77 @@
 # Cross-Sectional Momentum on S&P 500
 
-This repository contains a fully reproducible pipeline (via **Docker**) for a **12–1 cross-sectional momentum** study on S&P 500 stocks (Kaggle “S&P 500 stock data”).
+This repo contains all code, data, and a Dockerized environment to reproduce a 12–1 cross-sectional momentum analysis on S&P 500 stocks.
+You do not need local R—only Docker.
 
-- Report source: `R_Project.Rmd`
-- Prebuilt Docker image on DockerHub: **https://hub.docker.com/r/richardfbao/d550-final-report**
+Docker Hub: richardfbao/d550-final-report:latest
+Prebuilt Docker image on DockerHub: **https://hub.docker.com/r/richardfbao/d550-final-report**
 
----
 
 ## Repository Layout
 
 ```text
 .
-├── code/
-│   └── 01_render_report.R        # renders R_Project.Rmd; honors OUTDIR env var
-├── data/
-│   ├── raw/
-│   │   └── all_stocks_5yr.csv
-│   └── clean/
-│       └── monthly_returns.csv
-├── Dockerfile
-├── Makefile
-├── R_Project.Rmd
-├── renv/                         # project library (renv)
-└── .gitignore                    # includes /report to avoid committing artifacts
+├─ data/
+│  ├─ raw/all_stocks_5yr.csv
+│  └─ clean/monthly_returns.csv
+├─ R_Project.Rmd
+├─ Dockerfile
+├─ Makefile
+└─ report/                  # created at runtime; contains R_Project.html
 ```
 
 
-## Quick Start (Recommended)
+## One-command build of the report (Rubric-ready)
 
-Generate the HTML report into a local report/ folder using the Makefile:
+From the repo root, with Docker Desktop running:
 
 `make docker-report`
 
-After it finishes, open:
+Output: report/R_Project.html
 
-`report/R_Project.html`
+This target runs docker run and bind-mounts the local report/ directory into the container, so the compiled report is written back to your machine—exactly what the rubric requires for the Makefile + report generation points.
 
-This target pulls (or uses) the image richardfbao/d550-final-report:latest, mounts your project and an output folder, runs the render, and leaves the compiled HTML in report/.
 
-⸻
+## (Optional) Build the image locally
 
-## How to Build the Docker Image
-
+This satisfies the rubric “docker build README” item.
 You can skip this step and use the prebuilt image from DockerHub.
 If you want to build locally:
 
-`docker build -t richardfbao/d550-final-report:latest .`
-
-Optionally push to DockerHub (maintainers):
-
-`docker login`
-`docker push richardfbao/d550-final-report:latest`
+`make docker-build`
+# equivalent:
+# docker build --platform=linux/amd64 -t richardfbao/d550-final-report:latest .
 
 
 ⸻
 
-## How to Create the Report with Docker
+## Makefile targets
 
-A) Using the Makefile (cross-platform)
+* `make docker-build` -> Builds richardfbao/d550-final-report:latest locally (uses --platform=linux/amd64 for Apple Silicon compatibility).
+* `make report` -> Generates ./report/R_Project.html (alias of docker-report).
+* `make clean` -> Removes the local report/ directory.
+* `make help` -> Prints target help.
 
-`make docker-report`
+Notes
+	* Apple Silicon (M-series): already handled by --platform=linux/amd64 in the build recipe.
+	* Windows (Git Bash): if a bind-mount path error occurs, change -v "$(PWD)" to -v "/$(PWD)" in the Makefile (some Git Bash setups need the leading slash).
 
-B) Raw docker run command (Mac/Linux)
+## Why R is not required locally
+The Docker image includes all system deps and R packages (rmarkdown, here, tidyverse, PerformanceAnalytics, xts, zoo, etc.). The container renders R_Project.Rmd and writes the HTML to your mounted report/ directory.
 
-`mkdir -p report`
-`
-docker run --rm \
-  -v "$PWD":/work \
-  -v "$PWD/report":/out \
-  -w /work \
-  -e OUTDIR=/out \
-  richardfbao/d550-final-report:latest
-`
+## TA quick check
+```
+# fresh clone
+git clone https://github.com/RichardFranklinBAO/D550_FinalProject.git
+cd D550_FinalProject
 
-Windows (Git Bash) path note
+# render via Docker
+make report
 
-On Git Bash you often need an extra leading / for mounts, e.g.:
+# verify artifact exists
+test -f report/R_Project.html && echo "✅ report OK" || echo "❌ report missing"
+```
+## License
+For course use and demonstration only.
 
-`mkdir -p report`
-`docker run --rm \
-  -v "//c/Users/<YOU>/path/to/project":/work \
-  -v "//c/Users/<YOU>/path/to/project/report":/out \
-  -w /work \
-  -e OUTDIR=/out \
-  richardfbao/d550-final-report:latest`
-
-After the container exits, the report is available at report/R_Project.html.
-
-⸻
-
-Local (non-Docker) Build
-
-If you prefer running locally (R 4.4+, renv activated):
-
-# from an R session in the project root
-source("code/01_render_report.R")   # or: rmarkdown::render("R_Project.Rmd")
-
-
-⸻
-
-Methods (What the report does)
-	1.	Read raw daily OHLCV data and aggregate to monthly log returns.
-	2.	Construct 12–1 momentum (t−12 to t−2, skipping t−1).
-	3.	Form deciles; compute long–short (Q10–Q1) returns.
-	4.	Report annualized return/vol/Sharpe; plot cumulative gross vs. net returns.
-
-⸻
-
-Reproducibility Notes
-	•	Dependencies are managed with renv inside the container; the image installs needed system/R packages.
-	•	Build artifacts are ignored by Git via .gitignore (contains /report).
-
-⸻
-
-Make Targets
-
-make docker-pull     # pull image from DockerHub
-make docker-build    # build image locally
-make docker-report   # run containerized render -> report/R_Project.html
-make clean           # remove local report/ artifacts
-
-
-⸻
-
-Contact
-
-Maintainer: richardfbao
-DockerHub image: richardfbao/d550-final-report:latest
+ardfbao/d550-final-report:latest

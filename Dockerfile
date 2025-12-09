@@ -22,7 +22,7 @@ WORKDIR /work
 ENV OUTDIR=/work/report
 
 # Render script lives inside the image; it expects R_Project.Rmd under /work
-COPY 01_render_report.R /usr/local/bin/01_render_report.R
+COPY code/01_render_report.R /usr/local/bin/01_render_report.R
 
 # Default behavior: render the report
 ENTRYPOINT ["Rscript", "/usr/local/bin/01_render_report.R"]

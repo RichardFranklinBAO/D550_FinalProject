@@ -1,15 +1,12 @@
-DOCKER_IMAGE := richardfbao/d550-final-report:latest
-PLATFORM     := linux/amd64
+# Makefile
+.PHONY: docker-build docker-report report clean help
 
-.PHONY: docker-build docker-push docker-report
+IMG = richardfbao/d550-final-report:latest
 
 docker-build:
-	DOCKER_DEFAULT_PLATFORM=$(PLATFORM) docker build -t $(DOCKER_IMAGE) .
+	docker build --platform=linux/amd64 -t $(IMG) .
 
-docker-push:
-	docker push $(DOCKER_IMAGE)
-
-# 生成报告到本机 ./report 目录
+# 评分使用的目标：挂载本地 report/，生成报告到本地
 docker-report:
 	mkdir -p report
 	docker run --rm \
@@ -17,5 +14,15 @@ docker-report:
 		-v "$(PWD)/report":/out \
 		-w /work \
 		-e OUTDIR=/out \
-		-e RENV_CONFIG_AUTOLOAD=FALSE \
-		$(DOCKER_IMAGE)
+		$(IMG)
+
+# 便捷别名
+report: docker-report
+
+clean:
+	rm -rf report
+
+help:
+	@echo "make docker-build  # 构建镜像"
+	@echo "make report        # 生成报告到 ./report/R_Project.html"
+	@echo "make clean         # 删除 report/"

@@ -9,12 +9,6 @@ if (file.exists("renv.lock")) {
 rmarkdown::render("R_Project.Rmd", output_file = file.path(Sys.getenv("OUTDIR", "."), "R_Project.html"))
 
 # code/01_render_report.R
-here::i_am("code/01_render_report.R")
-
 out <- Sys.getenv("OUTDIR", unset = "report")
-dir.create(out, recursive = TRUE, showWarnings = FALSE)
-
-rmarkdown::render(
-  here::here("R_Project.Rmd"),
-  output_file = file.path(out, "R_Project.html")
-)
+if (!dir.exists(out)) dir.create(out, recursive = TRUE)
+rmarkdown::render("R_Project.Rmd", output_file = file.path(out, "R_Project.html"))

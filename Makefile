@@ -23,6 +23,6 @@ clean:
 	rm -rf report
 
 help:
-	@echo "make docker-build  # 构建镜像"
-	@echo "make report        # 生成报告到 ./report/R_Project.html"
-	@echo "make clean         # 删除 report/"
+	@echo "make docker-build  # building docker"
+	@echo "make report        # generating report to ./report/R_Project.html"
+	@echo "make clean         # deleting report/"
